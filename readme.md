@@ -1,1 +1,1 @@
-#Funnycoin
+# Funnycoin
