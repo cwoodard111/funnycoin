@@ -15,4 +15,12 @@ public class Block {
     public List<Transaction> getTransactions() {
         return transactions;
     }
+
+    public boolean isFull() {
+        if(transactions.size() >= 100) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }
