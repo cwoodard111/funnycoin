@@ -12,5 +12,5 @@ public class FunnycoinCache {
   }
   
   public static int getInputReward() {
-    return blockChain.size() < 10000 ? true : false;
+    return blockChain.size() < 10000 ? 50 : 40;
   }
