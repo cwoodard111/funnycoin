@@ -18,6 +18,7 @@ import java.util.List;
 public class Wallet {
     public PrivateKey privateKey;
     public PublicKey publicKey;
+    int difficulty = 3;
 
     public Wallet() throws NoSuchProviderException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
         generateKeyPair();
@@ -40,13 +41,13 @@ public class Wallet {
             System.out.println("insufficient funds");
             return;
         }
-
         Transaction transaction = new Transaction(getBase64Key(publicKey),reciever,amount);
         List<Transaction> transactions = new ArrayList<>();
         transactions.add(transaction);
         Block currentBlock = FunnycoinCache.blockChain.get(FunnycoinCache.blockChain.size() - 1);
         if(currentBlock.isFull()) {
-            Block block = new Block(transactions);
+            Block block = new Block(currentBlock.getHash());
+            block.mine(3);
             FunnycoinCache.blockChain.add(block);
         } else {
             currentBlock.getTransactions().add(transaction);
@@ -66,9 +67,9 @@ public class Wallet {
         public void sendGenesis(PublicKey reciever, float amount) throws IOException {
 
             Transaction transaction = new Transaction(getBase64Key(publicKey),getBase64Key(reciever),amount);
-            List<Transaction> transactions = new ArrayList<>();
-            transactions.add(transaction);
-            Block genesisBlock = new Block(transactions);
+            Block genesisBlock = new Block("first funnycoin block");
+            genesisBlock.transactions.add(transaction);
+            genesisBlock.mine(3);
             FunnycoinCache.blockChain.add(genesisBlock);
             Gson gson = new Gson();
             String newJson = gson.toJson(FunnycoinCache.blockChain);
