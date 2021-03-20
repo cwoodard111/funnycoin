@@ -42,21 +42,7 @@ public class Funnycoin {
                 Block[] blockChain = gson.fromJson(blockChainArray, Block[].class);
                 FunnycoinCache.blockChain = Arrays.asList(blockChain);
             }
-                Block currentBlock = FunnycoinCache.blockChain.get(FunnycoinCache.blockChain.size() - 1);
-
-                System.out.println(wallet1.getBase64Key(wallet1.publicKey) + " wallet2:" + wallet2.getBase64Key(wallet2.publicKey));
-                while(true) {
-                    Scanner scanner = new Scanner(System.in);
-                    String linew;
-                    if((linew = scanner.nextLine()).toLowerCase().contains("send")) {
-                        String[] args = linew.split(" ");
-                        String reciever = args[1];
-                        float amount = Float.parseFloat(args[2]);
-                        wallet2.send(reciever,amount);
-                    }
-
-                    System.out.println(wallet1.getBalanceFromChain(wallet1.publicKey) + " " + wallet2.getBalanceFromChain(wallet2.publicKey));
-            }
+            Block currentBlock = FunnycoinCache.blockChain.get(FunnycoinCache.blockChain.size() - 1);
         }
     }
     Funnycoin(NodeType type, String publicKey) throws IOException {
