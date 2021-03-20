@@ -42,7 +42,10 @@ public class Funnycoin {
                 Block[] blockChain = gson.fromJson(blockChainArray, Block[].class);
                 FunnycoinCache.blockChain = Arrays.asList(blockChain);
             }
-            Block currentBlock = FunnycoinCache.blockChain.get(FunnycoinCache.blockChain.size() - 1);
+
+
+            //TODO: CHECK IF BLOCK VALID ON SEND WITH P2P NETWORK
+
         }
     }
     Funnycoin(NodeType type, String publicKey) throws IOException {
