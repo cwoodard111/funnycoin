@@ -15,4 +15,4 @@
 
 ## TODO:
 
-### Create hashing system so people cant get their coins stolen with just public keys (lol), use RSA-sha256 instead of the WITH256 as java8 is the only platform accepting that as a provider, create voting system, creating mining system for new blocks (not traditional mining, just using various block detections and ways to really easily check for double spending), create website to view archived images, create option to delete a photo from the archive, allowing photos that slipped through the cracks to be removed.
+### create voting system, create website to view archived images, create option to delete a photo from the archive, allowing photos that slipped through the cracks to be removed.
