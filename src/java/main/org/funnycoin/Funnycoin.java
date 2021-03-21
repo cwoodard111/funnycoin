@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.funnycoin.blocks.Block;
+import org.funnycoin.p2p.NetworkManager;
 import org.funnycoin.transactions.Transaction;
 import org.funnycoin.wallet.Wallet;
 
@@ -18,8 +19,18 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Funnycoin {
+    
+    
+    
+    /**
+    * big disclaimer: most of this code is for running file node which isnt going to happen so i have to add a whole ton more stuff for it to ACTUALLY work with p2p, same with Wallet.java
+    */
+    
+    
+    
+   
 
-    Funnycoin(NodeType type) throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+    Funnycoin(NodeType type) throws Exception {
         if(type == NodeType.MINER) {
             File blockChainFile = new File("blockchain.json");
             BufferedReader chainReader = new BufferedReader(new FileReader(blockChainFile));
@@ -42,6 +53,8 @@ public class Funnycoin {
                 Block[] blockChain = gson.fromJson(blockChainArray, Block[].class);
                 FunnycoinCache.blockChain = Arrays.asList(blockChain);
             }
+            NetworkManager networkManager = new NetworkManager();
+
 
 
             //TODO: CHECK IF BLOCK VALID ON SEND WITH P2P NETWORK
@@ -73,6 +86,7 @@ public class Funnycoin {
         JsonArray blockChainArray = (JsonArray) chainParser.parse(json);
         Gson gson = new Gson();
         Block[] blockChain = gson.fromJson(blockChainArray, Block[].class);
+
         FunnycoinCache.blockChain = Arrays.asList(blockChain);
     }
 
@@ -88,9 +102,12 @@ public class Funnycoin {
         return balance;
     }
 
-    public static void main(String[] args) throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+    public static void main(String[] args) throws Exception {
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-        if(args.length == 2) {
+        for(String arg : args) {
+            System.out.println(arg);
+        }
+        if(args.length == 1) {
             if(args[0].toLowerCase().equals("miner")) {
                 new Funnycoin(NodeType.MINER);
             } else if(args[0].toLowerCase().contains("wallet")) {
