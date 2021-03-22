@@ -1,14 +1,14 @@
 package org.funnycoin.wallet;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.funnycoin.FunnycoinCache;
 import org.funnycoin.blocks.Block;
 import org.funnycoin.transactions.Transaction;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.security.*;
 import java.security.spec.ECGenParameterSpec;
 import java.util.ArrayList;
@@ -18,65 +18,47 @@ import java.util.List;
 public class Wallet {
     public PrivateKey privateKey;
     public PublicKey publicKey;
-    int difficulty = 3;
 
-    public Wallet() throws NoSuchProviderException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
-        generateKeyPair();
+    public Wallet() throws NoSuchAlgorithmException, IOException {
+        File walletFile = new File("wallet.json");
+        if(walletFile.exists()) {
+            BufferedReader walletReader = new BufferedReader(new FileReader(walletFile));
+            String tempLine;
+            if((tempLine = walletReader.readLine()) != null) {
+                JsonObject wallet = JsonParser.parseString(tempLine).getAsJsonObject();
+                privateKey = (PrivateKey) SignageUtils.getPrivateKey(wallet.get("privateKey").getAsString());
+                publicKey = (PublicKey) SignageUtils.getPublicKey(wallet.get("publicKey").getAsString());
+            }
+        } else {
+            generateKeyPair();
+        }
     }
 
 
-    public void generateKeyPair() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("ECDSA","BC");
-        SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("prime192v1");
-        keyGen.initialize(ecSpec,random);
-        KeyPair pair = keyGen.generateKeyPair();
+    public void generateKeyPair() throws NoSuchAlgorithmException, IOException {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(1024);
+        KeyPair pair = kpg.generateKeyPair();
         privateKey = pair.getPrivate();
         publicKey = pair.getPublic();
+        File walletFile = new File("wallet.json");
+        walletFile.createNewFile();
+        BufferedWriter writer = new BufferedWriter(new FileWriter(walletFile));
+        JsonObject object = new JsonObject();
+        object.addProperty("publicKey",getBase64Key(publicKey));
+        object.addProperty("privateKey",getBase64Key(privateKey));
+        writer.write(object.toString());
+        writer.close();
     }
 
 
-    public void send(String reciever,float amount) throws IOException {
-        if(getBalanceFromChain(publicKey) < amount) {
-            System.out.println("insufficient funds");
-            return;
-        }
-        Transaction transaction = new Transaction(getBase64Key(publicKey),reciever,amount);
-        List<Transaction> transactions = new ArrayList<>();
-        transactions.add(transaction);
-        Block currentBlock = FunnycoinCache.blockChain.get(FunnycoinCache.blockChain.size() - 1);
-        if(currentBlock.isFull()) {
-            Block block = new Block(currentBlock.getHash());
-            block.mine(3);
-            FunnycoinCache.blockChain.add(block);
-        } else {
-            currentBlock.getTransactions().add(transaction);
-            Gson gson = new Gson();
-            String newJson = gson.toJson(FunnycoinCache.blockChain);
-            BufferedWriter writer = new BufferedWriter(new FileWriter(new File("blockchain.json")));
-            writer.write(newJson);
-            writer.close();
-        }
-    }
 
-        public String getBase64Key(PublicKey key) {
+
+        public String getBase64Key(Key key) {
             return Base64.getEncoder().encodeToString(key.getEncoded());
         }
 
 
-        public void sendGenesis(PublicKey reciever, float amount) throws IOException {
-
-            Transaction transaction = new Transaction(getBase64Key(publicKey),getBase64Key(reciever),amount);
-            Block genesisBlock = new Block("first funnycoin block");
-            genesisBlock.transactions.add(transaction);
-            genesisBlock.mine(3);
-            FunnycoinCache.blockChain.add(genesisBlock);
-            Gson gson = new Gson();
-            String newJson = gson.toJson(FunnycoinCache.blockChain);
-            BufferedWriter writer = new BufferedWriter(new FileWriter(new File("blockchain.json")));
-            writer.write(newJson);
-            writer.close();
-    }
 
     public float getBalanceFromChain(PublicKey publicKey) {
         float balance = 0.0f;
