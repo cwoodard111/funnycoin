@@ -5,7 +5,7 @@
 
 ### Funnycoin has two categories of miners, One that does optimized calculations to calculate wether the wallet has enough balance and that the blockchain is valid. The other miner category is the ones that rate the images, anybody can join this position.
 
-## *How do funnycoins get added to circulation?*
+## How do funnycoins get added to circulation?
 
 ### Funnycoins are added into circulation by a coinbase adding them with consensus with majority of the network. The image rating miners split the funnycoins with the user that submitted the image. Traditional miners doing calculations split rewards with the image submitter, as the "owner" of a block.
 
