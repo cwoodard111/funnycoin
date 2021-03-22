@@ -15,7 +15,8 @@ public class Transaction {
     float amount;
     public String transactionId;
     public String signature;
-    public Transaction(String ownerKey, String outputKey, float amount) {
+    public Transaction(String ownerKey, String outputKey, float amount, String signature) {
+        this.signature = signature;
         this.outputKey = outputKey;
         this.ownerKey = ownerKey;
         this.amount = amount;
