@@ -54,8 +54,8 @@ public class Transaction {
         return Base64.getEncoder().encodeToString(signature);
     }
 
-    private String getHash() {
-        return applySha256(ownerKey + outputKey);
+    public String getHash() {
+        return applySha256(ownerKey + outputKey + amount + signature);
     }
 
     public String applySha256(String input){
