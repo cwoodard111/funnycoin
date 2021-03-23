@@ -89,4 +89,8 @@ public class FunnycoinCache {
 
         FunnycoinCache.blockChain = Arrays.asList(blockChain);
     }
+
+    public static int getDifficulty() {
+        return 6;
+    }
 }
