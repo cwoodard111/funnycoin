@@ -1,5 +1,6 @@
 package org.funnycoin.blocks;
 
+import org.funnycoin.FunnycoinCache;
 import org.funnycoin.transactions.Transaction;
 
 import java.security.MessageDigest;
@@ -9,13 +10,19 @@ import java.util.List;
 
 public class Block {
     public ArrayList<Transaction> transactions = new ArrayList<Transaction>();
-    private long timeStamp;
+    public long timeStamp;
     public String hash;
-    private String previousHash;
-    private int nonce;
-    String merkleRoot;
+    public String previousHash;
+    public int height;
+    public int nonce;
+    public String merkleRoot;
 
     public Block(String previousHash) {
+        if(FunnycoinCache.blockChain.size() == 0) {
+            this.height = 0;
+        } else {
+            this.height = FunnycoinCache.blockChain.size() - 1;
+        }
         this.previousHash = previousHash;
         this.timeStamp = new Date().getTime();
         hash = getHash();
@@ -28,7 +35,7 @@ public class Block {
             nonce++;
             hash = getHash();
         }
-        System.out.println("block successfully mined");
+        System.out.println("block successfully mined with a nonce of: " + nonce);
     }
 
     public String getMerkleRoot(ArrayList<Transaction> transactions) {
