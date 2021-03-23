@@ -13,6 +13,7 @@ import java.security.Security;
 import java.util.Scanner;
 
 import static org.funnycoin.FunnycoinCache.*;
+import static org.funnycoin.p2p.RequestParams.*;
 
 public class Funnycoin {
     private int difficulty = 6;
@@ -21,6 +22,9 @@ public class Funnycoin {
         try {
             JsonObject requestObject = new JsonObject();
             requestObject.addProperty("event","getBlocksAfter");
+            requestObject.addProperty("startingHeight",height);
+            blockHeight = height;
+            requestingBlocks = true;
             peerServer.broadcast(requestObject.toString());
         } catch(IOException e) {
             e.printStackTrace();
@@ -49,7 +53,8 @@ public class Funnycoin {
                 object.addProperty("block",gson.toJson(genesis));
                 peerServer.broadcast(object.toString());
             } else {
-
+                loadBlockChain();
+                getBlocksAfter(getCurrentBlock().height);
             }
 
 
