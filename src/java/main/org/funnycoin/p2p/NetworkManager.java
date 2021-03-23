@@ -21,15 +21,9 @@ public class NetworkManager {
 
     public void broadcast(String message) throws IOException {
         for(Peer peer : peers) {
-            System.out.println("hi");
             if(peer.peerIsOnline()) {
-                System.out.println("he is online");
-                try {
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                ObjectOutputStream stream = new ObjectOutputStream(peer.socket.getOutputStream());
-                stream.writeObject(message);
+                BufferedWriter stream  = new BufferedWriter(new OutputStreamWriter(peer.socket.getOutputStream()));
+                stream.write(message);
                 stream.close();
             }
         }
@@ -59,8 +53,6 @@ public class NetworkManager {
             } else {
                 List<Peer> peers_local = new ArrayList<Peer>();
                 Peer test = new Peer("104.254.247.125");
-                Peer me = new Peer("174.91.50.57");
-                peers_local.add(me);
                 peers_local.add(test);
                 Gson gson = new Gson();
                 String peers_json_generated = gson.toJson(peers_local);
