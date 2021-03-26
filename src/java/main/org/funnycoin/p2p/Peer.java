@@ -25,9 +25,9 @@ public class Peer {
     }
 
     public void connectToPeer() throws Exception {
-        if(peerIsOnline()) {
+        System.out.println(address);
             System.out.println("The peer is online.");
-            socket = new Socket(address, 51241);
+            socket = new Socket(address, 51341);
             Thread t = new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -39,29 +39,36 @@ public class Peer {
                 }
             });
             t.start();
-        }
     }
-
     public boolean peerIsOnline() {
         String hostName = address;
-        int port = 51241;
+        int port = 51341;
         boolean isAlive = false;
+
+        // Creates a socket address from a hostname and a port number
         SocketAddress socketAddress = new InetSocketAddress(hostName, port);
         Socket socketL = new Socket();
+
+        // Timeout required - it's in milliseconds
         int timeout = 2000;
 
         try {
             socketL.connect(socketAddress, timeout);
             socketL.close();
             isAlive = true;
+            System.out.println("true?");
 
         } catch (SocketTimeoutException exception) {
             System.out.println("SocketTimeoutException " + hostName + ":" + port + ". " + exception.getMessage());
+            isAlive = false;
         } catch (IOException exception) {
             System.out.println(
                     "IOException - Unable to connect to " + hostName + ":" + port + ". " + exception.getMessage());
+            isAlive = false;
+        } catch (Exception e) {
+            isAlive = false;
         }
-        System.out.println(isAlive);
+        System.out.println(isAlive + " ye");
         return isAlive;
     }
 
@@ -78,7 +85,7 @@ public class Peer {
                     System.out.println("The hash of the block is not equal to the calculated value.");
                     return false;
                 }
-                if(!previousBlock.hash.equals(currentBlock.getHash())) {
+                if(!previousBlock.hash.equals(previousBlock.getHash())) {
                     System.out.println("The hash of the previous block is not equal to the calculated value.");
                     return false;
                 }
@@ -114,9 +121,10 @@ public class Peer {
         System.out.println("starting listener");
             while(true) {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                String tmp;
-                if((tmp = reader.readLine()) != null) {
-                    System.out.println(tmp);
+                String tmp = null;
+                tmp = reader.readLine();
+                if(tmp != null) {
+                    System.out.println("COMPLETED: " + tmp);
                     JsonObject eventObject = JsonParser.parseString(tmp).getAsJsonObject();
                     String event = eventObject.get("event").getAsString();
                     if(event.toLowerCase().contains("blocksAfter")) {
@@ -132,8 +140,7 @@ public class Peer {
                             }
 
                             if(isChainValid(tempChain)) {
-                                FunnycoinCache.blockChain = tempChain;
-                                FunnycoinCache.syncBlockchainFile();
+                                FunnycoinCache.gatheredBlocks.add(tempChain);
                             } else {
                                 System.out.println("Denied blockchain, invalid.");
                             }
