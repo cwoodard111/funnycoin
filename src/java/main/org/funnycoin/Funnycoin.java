@@ -10,38 +10,63 @@ import org.funnycoin.wallet.Wallet;
 
 import java.io.IOException;
 import java.security.Security;
+import java.util.List;
 import java.util.Scanner;
 
 import static org.funnycoin.FunnycoinCache.*;
 import static org.funnycoin.p2p.RequestParams.*;
 
 public class Funnycoin {
-    private int difficulty = 6;
+    private int difficulty = 7;
 
-    private void getBlocksAfter(int height) {
-        try {
-            JsonObject requestObject = new JsonObject();
-            requestObject.addProperty("event","getBlocksAfter");
-            requestObject.addProperty("startingHeight",height);
-            blockHeight = height;
-            requestingBlocks = true;
-            peerServer.broadcast(requestObject.toString());
-        } catch(IOException e) {
-            e.printStackTrace();
+    private void getBlocksAfter(int height) throws InterruptedException {
+        JsonObject requestObject = new JsonObject();
+        requestObject.addProperty("event","getBlocksAfter");
+        requestObject.addProperty("startingHeight",height);
+        blockHeight = height;
+        requestingBlocks = true;
+        final int blockChainHeight = getCurrentBlock().height;
+        while(true) {
+            if (gatheredBlocks.size() < 1) {
+                for (List<Block> blocks : gatheredBlocks) {
+                    if(blocks.size() > blockChainHeight) {
+                        System.out.println("Blockchain size is greater than the old one. we will use it!");
+                        for(Block block : blocks) {
+                            blockChain.add(block);
+                        }
+                    }
+                }
+                break;
+            }
         }
+    }
+
+    private void mine() throws IOException {
+        Block mine = FunnycoinCache.getNextBlock();
+        mine.transactions.add(new Transaction("coinbase", wallet.getBase64Key(wallet.publicKey),50.f,"null"));
+        mine.mine(getDifficulty());
+        Gson gson = new Gson();
+        peerServer.broadcast(gson.toJson(mine));
+        blockChain.add(mine);
+        syncBlockchainFile();
     }
 
     Funnycoin(NodeType type) throws Exception {
         Gson gson = new Gson();
         if(type == NodeType.MINER) {
+            getServerThread().start();
             System.out.println("selected type: miner");
+            NetworkManager manager = new NetworkManager();
+            System.out.println("connecting to other people");
+            loadBlockChain();
             /**
              * Later on in the class, i define a method that asks other nodes to send their blockchain starting after a block height of what i currently have.
              */
             if(blockChain.size() == 0) {
+                System.out.println("Blockchain empty.");
                 Block genesis = FunnycoinCache.getCurrentBlock();
                 genesis.transactions.add(new Transaction("coinbase",wallet.getBase64Key(wallet.publicKey),50.0f,"null"));
-                genesis.mine(difficulty);
+                genesis.mine(getDifficulty());
                 blockChain.add(genesis);
                 syncBlockchainFile();
                 /**
@@ -51,10 +76,14 @@ public class Funnycoin {
                 JsonObject object = new JsonObject();
                 object.addProperty("event","newBlock");
                 object.addProperty("block",gson.toJson(genesis));
-                peerServer.broadcast(object.toString());
+                while(true) {
+                    mine();
+                }
             } else {
-                loadBlockChain();
                 getBlocksAfter(getCurrentBlock().height);
+                while(true) {
+                    mine();
+                }
             }
 
 
@@ -76,7 +105,10 @@ public class Funnycoin {
 
 
 
+
         } else if(type == NodeType.WALLET) {
+            FunnycoinCache.loadBlockChain();
+            System.out.print(getBalanceFromChain(wallet.getBase64Key(wallet.publicKey)));
             NetworkManager manager = new NetworkManager();
             Wallet myWallet = new Wallet();
             while(true) {
@@ -129,7 +161,7 @@ public class Funnycoin {
             System.out.println(arg);
         }
         if(args.length == 1) {
-            if(args[0].toLowerCase().equals("miner")) {
+            if(args[0].toLowerCase().contains("miner")) {
                 new Funnycoin(NodeType.MINER);
             } else if(args[0].toLowerCase().contains("wallet")) {
                 new Funnycoin(NodeType.WALLET);
