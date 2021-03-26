@@ -10,6 +10,9 @@ import org.funnycoin.transactions.Transaction;
 import org.funnycoin.wallet.Wallet;
 
 import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,7 +40,25 @@ public class FunnycoinCache {
         return FunnycoinCache.blockChain.get(FunnycoinCache.blockChain.size() - 1);
     }
 
+    public static Thread getServerThread() {
+        return new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    peerServer.init();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
     public static PeerServer peerServer = new PeerServer();
+
+    public static Block getNextBlock() {
+        return new Block(getCurrentBlock().getHash());
+    }
+
 
     public static NetworkManager manager;
 
@@ -64,7 +85,6 @@ public class FunnycoinCache {
         try {
             BufferedWriter chainWriter = new BufferedWriter(new FileWriter(new File("blockchain.json")));
             Gson gson = new Gson();
-            System.out.println(gson.toJson(FunnycoinCache.blockChain));
             chainWriter.write(gson.toJson(FunnycoinCache.blockChain));
             chainWriter.close();
         } catch (IOException e) {
@@ -81,16 +101,39 @@ public class FunnycoinCache {
         while((line = chainReader.readLine()) != null) {
             chainBuilder.append(line);
         }
-        String json = chainBuilder.toString();
-        JsonParser chainParser = new JsonParser();
-        JsonArray blockChainArray = (JsonArray) chainParser.parse(json);
-        Gson gson = new Gson();
-        Block[] blockChain = gson.fromJson(blockChainArray, Block[].class);
-
-        FunnycoinCache.blockChain = Arrays.asList(blockChain);
+        if(chainBuilder.toString().length() > 1) {
+            String json = chainBuilder.toString();
+            JsonParser chainParser = new JsonParser();
+            JsonArray blockChainArray = (JsonArray) chainParser.parse(json);
+            Gson gson = new Gson();
+            Block[] blockChain = gson.fromJson(blockChainArray, Block[].class);
+            List<Block> blocksList = Arrays.asList(blockChain);
+            FunnycoinCache.blockChain.addAll(blocksList);
+        }
     }
 
     public static int getDifficulty() {
-        return 6;
+        return 7;
     }
+
+    public static List<List<Block>> gatheredBlocks = new ArrayList<>();
+
+    public static String ip;
+
+    static {
+        try {
+            ip = getIp();
+            System.out.println(ip + " ip");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static String getIp() throws IOException {
+        URL url = new URL("http://checkip.amazonaws.com/");
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
+        return reader.readLine();
+    }
+
 }
