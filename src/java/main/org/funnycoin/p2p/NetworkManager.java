@@ -40,20 +40,34 @@ public class NetworkManager {
             }
             String peers_json = builder.toString();
             if(peers_json.length() > 1) {
+                System.out.println("Loaded from file!");
                 JsonParser chainParser = new JsonParser();
                 JsonArray blockChainArray = (JsonArray) chainParser.parse(peers_json);
                 Gson gson = new Gson();
                 Peer[] peersArray = gson.fromJson(blockChainArray, Peer[].class);
                 peers = Arrays.asList(peersArray);
-
-                for(Peer peer : peers) {
-                    peer.connectToPeer();
+                for(Peer p : peers) {
+                    if(p.address == FunnycoinCache.ip) {
+                        System.out.println("silly goose thats you!");
+                        peers.remove(p);
+                    }
                 }
+                boolean j = false;
+            while(true) {
+                for (Peer peer : peers) {
+                    if (peer.peerIsOnline()) {
+                        System.out.println("online");
+                        peer.connectToPeer();
+                        j = true;
+                    }
+                }
+                if(j) {
+                    break;
+                }
+            }
 
             } else {
                 List<Peer> peers_local = new ArrayList<Peer>();
-                Peer test = new Peer("104.254.247.125");
-                peers_local.add(test);
                 Gson gson = new Gson();
                 String peers_json_generated = gson.toJson(peers_local);
                 BufferedWriter writer = new BufferedWriter(new FileWriter(peersFile));
