@@ -3,7 +3,7 @@
 ## A decentralized ledger of funny images, anybody can submit their images.
 
 
-Funnycoin has two categories of miners, One that does optimized calculations to calculate wether the wallet has enough balance and that the blockchain is valid. The other miner category is the ones that rate the images, anybody can join this position.
+Funnycoin has two categories of miners, One that does proof-of-work mining calculations and that the blockchain is valid. The other miner category is the ones that rate the images, anybody can join this position.
 
 ## How do funnycoins get added to circulation?
 
@@ -12,6 +12,11 @@ Funnycoins are added into circulation by a coinbase adding them with consensus w
 ## How do images get accepted
 
 Images get accepted by either: A majority of the image raters giving it a positive review (determined by block difficulty) or a large minority of the image raters giving a high rating determined by block difficulty and the network rating average.
+
+
+##Multi Layered System
+
+Funnycoin is a multilayered system, one part of the system is an incentive in the form of coin the other is the images
 
 ## TODO:
 
