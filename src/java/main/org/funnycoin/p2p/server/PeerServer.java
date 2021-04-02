@@ -21,9 +21,13 @@ public class PeerServer {
         socket = s.accept();
     }
 
-    public void broadcast(String message) throws IOException {
-        System.out.println("SENDING " + message);
-        PrintWriter writer = new PrintWriter(socket.getOutputStream(),true);
-        writer.println(message + "\n");
+    public void broadcast(String message) {
+        try {
+            PrintWriter out = new PrintWriter(socket.getOutputStream());
+            out.println(message);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
