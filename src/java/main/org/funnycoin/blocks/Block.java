@@ -30,8 +30,9 @@ public class Block {
 
     public void mine(int difficulty) {
         merkleRoot = getMerkleRoot(transactions);
-        String targetHash = new String(new char[difficulty]).replace('\0', '0');
-        while(!hash.substring(0,difficulty).equals(targetHash)) {
+        String targetHash = new String(new char[FunnycoinCache.getDifficulty()]).replace('\0', '0');
+        System.out.println(targetHash + hash);
+        while(!hash.substring(0,FunnycoinCache.getDifficulty()).equals(targetHash)) {
             nonce++;
             hash = getHash();
         }
