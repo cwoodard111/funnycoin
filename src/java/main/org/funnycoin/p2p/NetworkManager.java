@@ -5,6 +5,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import org.funnycoin.FunnycoinCache;
 import org.funnycoin.blocks.Block;
+import org.funnycoin.p2p.threadsupport.PeerThread;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -13,7 +14,7 @@ import java.util.List;
 
 public class NetworkManager {
     public static List<Peer> peers = new ArrayList<Peer>();
-
+    public static List<PeerThread> threads = new ArrayList<PeerThread>();
     public NetworkManager() throws Exception {
         init();
         System.out.println("init complete");
@@ -47,17 +48,21 @@ public class NetworkManager {
                 Peer[] peersArray = gson.fromJson(blockChainArray, Peer[].class);
                 peers = Arrays.asList(peersArray);
                 for(Peer p : peers) {
+                    System.out.println(p.address);
                     if(p.address == FunnycoinCache.ip) {
                         System.out.println("silly goose thats you!");
                         peers.remove(p);
                     }
                 }
                 boolean j = false;
+                System.out.println("finna while lop");
             while(true) {
                 for (Peer peer : peers) {
                     if (peer.peerIsOnline()) {
                         System.out.println("online");
-                        peer.connectToPeer();
+                        PeerThread thread = new PeerThread(peer.address);
+                        threads.add(thread);
+                        thread.start();
                         j = true;
                     }
                 }
