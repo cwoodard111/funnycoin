@@ -113,7 +113,7 @@ public class FunnycoinCache {
     }
 
     public static int getDifficulty() {
-        return 7;
+        return 6;
     }
 
     public static List<List<Block>> gatheredBlocks = new ArrayList<>();
