@@ -42,6 +42,7 @@ public class Transaction {
         byte[] signatureBytes = Base64.getDecoder().decode(signature);
 
         return publicSignature.verify(signatureBytes);
+
     }
 
     public String sign(String plainText, PrivateKey privateKey) throws Exception {
