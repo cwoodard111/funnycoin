@@ -78,11 +78,13 @@ public class Funnycoin {
                 object.addProperty("block",gson.toJson(genesis));
                 while(true) {
                     mine();
+                    peerServer.broadcast("HALO");
                 }
             } else {
                 getBlocksAfter(getCurrentBlock().height);
                 while(true) {
                     mine();
+                    peerServer.broadcast("HALO");
                 }
             }
 
