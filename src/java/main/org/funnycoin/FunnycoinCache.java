@@ -4,14 +4,12 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import org.funnycoin.blocks.Block;
-import org.funnycoin.p2p.NetworkManager;
+import org.funnycoin.p2p.PeerLoader;
 import org.funnycoin.p2p.server.PeerServer;
-import org.funnycoin.transactions.Transaction;
 import org.funnycoin.wallet.Wallet;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -40,18 +38,6 @@ public class FunnycoinCache {
         return FunnycoinCache.blockChain.get(FunnycoinCache.blockChain.size() - 1);
     }
 
-    public static Thread getServerThread() {
-        return new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    peerServer.init();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-    }
 
     public static PeerServer peerServer = new PeerServer();
 
@@ -59,16 +45,8 @@ public class FunnycoinCache {
         return new Block(getCurrentBlock().getHash());
     }
 
+    public static PeerLoader peerLoader = new PeerLoader();
 
-    public static NetworkManager manager;
-
-    static {
-        try {
-            manager = new NetworkManager();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 
     public static Wallet wallet;
 
@@ -123,17 +101,18 @@ public class FunnycoinCache {
     static {
         try {
             ip = getIp();
-            System.out.println(ip + " ip");
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static String getIp() throws IOException {
+    public static String getIp() throws IOException {
         URL url = new URL("http://checkip.amazonaws.com/");
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
         return reader.readLine();
     }
+
+    public static JsonParser parser = new JsonParser();
 
 }
