@@ -1,154 +1,52 @@
 package org.funnycoin.p2p;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import org.funnycoin.FunnycoinCache;
-import org.funnycoin.blocks.Block;
-import org.funnycoin.transactions.Transaction;
-import org.funnycoin.wallet.SignageUtils;
-
-import static org.funnycoin.p2p.RequestParams.*;
+import com.codebrig.beam.BeamClient;
+import com.codebrig.beam.connection.ConnectionType;
+import org.funnycoin.p2p.server.PeerHandler;
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public class Peer {
     public String address;
-    public Socket socket;
+    public BeamClient socket;
+    public int port;
 
-    public Peer(String address) {
+    public Peer(String address,int port) {
         this.address = address;
+        this.port = port;
     }
 
-    public void connectToPeer() throws Exception {
-        System.out.println(address);
-            System.out.println("The peer is online.");
-            socket = new Socket(address, 51341);
-            Thread t = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        startListener();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
-            t.start();
+    public void connectToPeer() {
+        try {
+            socket = new BeamClient(InetAddress.getLoopbackAddress().getHostAddress(),"mam",port,false);
+            socket.connect();
+            socket.addHandler(PeerHandler.class);
+            socket.setIncomingConnectionTypes(new ConnectionType.Incoming[]{ConnectionType.Incoming.DIRECT});
+            socket.setDebugOutput(true);
+            System.out.println("Added handler");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
     public boolean peerIsOnline() {
         String hostName = address;
-        int port = 51341;
+        int port = this.port;
         boolean isAlive = false;
-
-        // Creates a socket address from a hostname and a port number
-        SocketAddress socketAddress = new InetSocketAddress(hostName, port);
-        Socket socketL = new Socket();
-
-        // Timeout required - it's in milliseconds
-        int timeout = 2000;
-
+        BeamClient client = new BeamClient(address, "mam",port,false);
         try {
-            socketL.connect(socketAddress, timeout);
-            socketL.close();
+            client.connect();
             isAlive = true;
-            System.out.println("true?");
 
         } catch (SocketTimeoutException exception) {
             System.out.println("SocketTimeoutException " + hostName + ":" + port + ". " + exception.getMessage());
             isAlive = false;
         } catch (IOException exception) {
-            System.out.println(
-                    "IOException - Unable to connect to " + hostName + ":" + port + ". " + exception.getMessage());
+            exception.printStackTrace();
             isAlive = false;
         } catch (Exception e) {
             isAlive = false;
         }
-        System.out.println(isAlive + " ye");
+        client.close();
         return isAlive;
     }
-
-    private boolean isChainValid(List<Block> blockChain) throws Exception {
-        for(int i = 0; i < blockChain.size(); i++) {
-            String difficultyTarget = new String(new char[FunnycoinCache.getDifficulty()]).replace('\0','0');
-            Block currentBlock = blockChain.get(i);
-            if(blockChain.size() >= 1) {
-                Block previousBlock = blockChain.get(i - 1);
-                /**
-                 * Performing checks on the temporary blockchain to see if it's valid.
-                 */
-                if(!currentBlock.hash.equals(currentBlock.getHash())) {
-                    System.out.println("The hash of the block is not equal to the calculated value.");
-                    return false;
-                }
-                if(!previousBlock.hash.equals(previousBlock.getHash())) {
-                    System.out.println("The hash of the previous block is not equal to the calculated value.");
-                    return false;
-                }
-                if(!currentBlock.hash.substring(0,FunnycoinCache.getDifficulty()).equals(difficultyTarget)) {
-                    System.out.println("The block does not have a Proof-Of-Work attached to it.");
-                    return false;
-                }
-                /**
-                 * Checking transactions for validity or errors.
-                 */
-                for(int j = 0; j < currentBlock.getTransactions().size(); j++) {
-                    Transaction currentTransaction = currentBlock.transactions.get(j);
-
-                    if(!currentTransaction.verify(currentTransaction.getHash(),currentTransaction.signature, SignageUtils.getPublicKey(currentTransaction.getOwnerKey()))) {
-                        if(currentTransaction.getOwnerKey().toLowerCase().equals("coinbase")) {
-                            return true;
-                        }
-                    }
-                }
-
-
-            } else {
-                /**
-                 * We are going to just say it's correct because it's at genesis.
-                 */
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public void startListener() throws Exception {
-        System.out.println("starting listener");
-            while(true) {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                String tmp = null;
-                tmp = reader.readLine();
-                if(tmp != null) {
-                    System.out.println("COMPLETED: " + tmp);
-                    JsonObject eventObject = JsonParser.parseString(tmp).getAsJsonObject();
-                    String event = eventObject.get("event").getAsString();
-                    if(event.toLowerCase().contains("blocksAfter")) {
-                        int height = eventObject.get("startingHeight").getAsInt();
-                        if(requestingBlocks) if(blockHeight == height) {
-                            Gson gson = new Gson();
-                            List<Block> tempChain = new ArrayList<>(FunnycoinCache.blockChain);
-                            JsonArray blockArray = eventObject.getAsJsonArray("blocks");
-                            Block[] blocksArray = gson.fromJson(blockArray, Block[].class);
-                            List<Block> incomingBlocks = Arrays.asList(blocksArray);
-                            for(Block b : incomingBlocks) {
-                                tempChain.add(b);
-                            }
-
-                            if(isChainValid(tempChain)) {
-                                FunnycoinCache.gatheredBlocks.add(tempChain);
-                            } else {
-                                System.out.println("Denied blockchain, invalid.");
-                            }
-                            blockHeight = 0;
-                            requestingBlocks = false;
-                        }
-                    }
-                }
-            }
-        }
-    }
+}
