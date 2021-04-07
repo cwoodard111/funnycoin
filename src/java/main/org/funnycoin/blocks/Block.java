@@ -1,6 +1,7 @@
 package org.funnycoin.blocks;
 
 import org.funnycoin.FunnycoinCache;
+import org.funnycoin.p2p.RequestParams;
 import org.funnycoin.transactions.Transaction;
 
 import java.security.MessageDigest;
@@ -28,15 +29,19 @@ public class Block {
         hash = getHash();
     }
 
-    public void mine(int difficulty) {
+    public boolean mine(int difficulty) {
         merkleRoot = getMerkleRoot(transactions);
         String targetHash = new String(new char[FunnycoinCache.getDifficulty()]).replace('\0', '0');
-        System.out.println(targetHash + hash);
-        while(!hash.substring(0,FunnycoinCache.getDifficulty()).equals(targetHash)) {
+        while (!hash.substring(0, FunnycoinCache.getDifficulty()).equals(targetHash)) {
+            if (RequestParams.interrupted) {
+                return false;
+            }
             nonce++;
             hash = getHash();
         }
+
         System.out.println("block successfully mined with a nonce of: " + nonce);
+        return true;
     }
 
     public String getMerkleRoot(ArrayList<Transaction> transactions) {
@@ -92,11 +97,4 @@ public class Block {
         return transactions;
     }
 
-    public boolean isFull() {
-        if(transactions.size() >= 100) {
-            return true;
-        } else {
-            return false;
-        }
-    }
 }
