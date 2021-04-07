@@ -1,33 +1,36 @@
 package org.funnycoin.p2p.server;
 
-import java.io.*;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.Base64;
+import com.codebrig.beam.BeamServer;
+import com.codebrig.beam.messages.BasicMessage;
+import com.dosse.upnp.UPnP;
+import org.funnycoin.miner.VerificationUtils;
+
 
 public class PeerServer {
-    ServerSocket s;
-    Socket socket;
+    BeamServer s;
 
-    public PeerServer() {
+
+    public void init() {
         try {
-            s = new ServerSocket(51341);
+            UPnP.openPortTCP(45800);
+            int port = 45800;
+            System.out.println("server created" + port);
+            s = new BeamServer("mamserver",port,false);
+            s.setDaemon(true);
+            s.start();
+            s.addHandler(PeerHandler.class);
         } catch(Exception e) {
             e.printStackTrace();
         }
     }
-
-    public void init() throws IOException {
-        socket = s.accept();
-    }
-
-    public void broadcast(String message) {
-        try {
-            PrintWriter out = new PrintWriter(socket.getOutputStream());
-            out.println(message);
-            out.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public void broadcast(String message,String event) {
+        System.out.println("sending: " + message);
+        /**
+         * I've never used this message library before but we're gonna try it.
+         */
+        BasicMessage beamMessage = new BasicMessage();
+        beamMessage = (BasicMessage) beamMessage.set("message",message);
+        beamMessage = (BasicMessage) beamMessage.set("event",event);
+        s.broadcast(beamMessage);
     }
 }
