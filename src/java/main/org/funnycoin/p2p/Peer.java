@@ -8,7 +8,7 @@ import java.net.*;
 
 public class Peer {
     public String address;
-    public BeamClient socket;
+    public transient BeamClient socket;
     public int port;
 
     public Peer(String address,int port) {
