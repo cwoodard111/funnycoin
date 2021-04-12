@@ -8,14 +8,13 @@ import org.funnycoin.miner.VerificationUtils;
 
 public class PeerServer {
     BeamServer s;
-
+    public int port = 45800;
 
     public void init() {
         try {
-            UPnP.openPortTCP(45800);
-            int port = 45800;
+            UPnP.openPortTCP(port);
             System.out.println("server created" + port);
-            s = new BeamServer("mamserver",port,false);
+            s = new BeamServer("mammy",port,false);
             s.setDaemon(true);
             s.start();
             s.addHandler(PeerHandler.class);
