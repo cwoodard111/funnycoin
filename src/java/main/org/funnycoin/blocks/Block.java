@@ -30,9 +30,11 @@ public class Block {
     }
 
     public boolean mine(int difficulty) {
+        RequestParams.interrupted = false;
+        System.out.println("mining block");
         merkleRoot = getMerkleRoot(transactions);
-        String targetHash = new String(new char[FunnycoinCache.getDifficulty()]).replace('\0', '0');
-        while (!hash.substring(0, FunnycoinCache.getDifficulty()).equals(targetHash)) {
+        String targetHash = new String(new char[difficulty]).replace('\0', '0');
+        while (!hash.substring(0, difficulty).equals(targetHash)) {
             if (RequestParams.interrupted) {
                 return false;
             }
