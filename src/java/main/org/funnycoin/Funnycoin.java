@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.funnycoin.blocks.Block;
 import org.funnycoin.p2p.Peer;
+import org.funnycoin.p2p.server.PeerServer;
 import org.funnycoin.transactions.Transaction;
 
 import java.io.*;
@@ -16,13 +17,13 @@ import static org.funnycoin.FunnycoinCache.*;
 import static org.funnycoin.p2p.RequestParams.*;
 
 public class Funnycoin {
-    private int difficulty = 6;
 
 
     private void mine() throws IOException {
         Block mine = FunnycoinCache.getNextBlock();
         mine.transactions.add(new Transaction("coinbase", wallet.getBase64Key(wallet.publicKey),50.f,"null"));
-        if(mine.mine(getDifficulty())) {
+        System.out.println("mining block with a difficulty of: " + FunnycoinCache.getBlockDifficulty(mine.height));
+        if(mine.mine(FunnycoinCache.getBlockDifficulty(mine.height))) {
             Gson gson = new Gson();
             String json = gson.toJson(mine);
             peerServer.broadcast(json, "newBlock");
@@ -60,30 +61,31 @@ public class Funnycoin {
             if(blockChain.size() == 0) {
                 peerServer.init();
                 peerLoader.init();
-                for(Peer p : peerLoader.peers) {
+                System.out.println("done loading SERVER and PEER");
+                for(int k = 0; k < peerLoader.peers.size(); k++) {
+                    Peer p = peerLoader.peers.get(k);
                     BeamMessage message = new BeamMessage();
                     message.set("event","nodejoin");
                     message.set("address", getIp());
-                    message.set("port","45800");
-                    System.out.println("sending: " + getIp());
+                    message.set("port",String.valueOf(peerServer.port));
                     p.socket.queueMessage(message);
                 }
+                System.out.println("done sending notification");
                 System.out.println("Blockchain empty.");
                 Block genesis = FunnycoinCache.getCurrentBlock();
                 genesis.transactions.add(new Transaction("coinbase",wallet.getBase64Key(wallet.publicKey),50.0f,"null"));
-                if(genesis.mine(getDifficulty())) {
+                if(genesis.mine(getBlockDifficulty(0))) {
                     blockChain.add(genesis);
                     syncBlockchainFile();
                     /**
                      * We have set the local blockchain since we know our own block is valid at genesis. who else would make a fraudulent block when they don't know the chain exists;
                      * we are going to send the block to other people now;
                      */
-                    JsonObject object = new JsonObject();
-                    object.addProperty("event", "newBlock");
-                    object.addProperty("block", gson.toJson(genesis));
-                    while (true) {
-                        mine();
-                    }
+                    peerServer.broadcast(gson.toJson(genesis),"newBlock");
+                }
+                while (true) {
+                    System.out.println("continuing chain.. mining...");
+                    mine();
                 }
             } else {
                 peerServer.init();
@@ -92,7 +94,7 @@ public class Funnycoin {
                     BeamMessage message = new BeamMessage();
                     message.set("event","nodejoin");
                     message.set("address", getIp());
-                    message.set("port","45800");
+                    message.set("port", String.valueOf(peerServer.port));
                     p.socket.queueMessage(message);
                 }
 
