@@ -1,150 +1,147 @@
 package org.funnycoin;
 
+import com.codebrig.beam.messages.BeamMessage;
+import com.dosse.upnp.UPnP;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.funnycoin.blocks.Block;
-import org.funnycoin.p2p.PeerLoader;
+import org.funnycoin.p2p.Peer;
 import org.funnycoin.p2p.server.PeerServer;
-import org.funnycoin.wallet.Wallet;
+import org.funnycoin.transactions.Transaction;
 
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.security.Security;
 
-public class FunnycoinCache {
-    public static List<Block> blockChain = new ArrayList<>();
+import static org.funnycoin.FunnycoinCache.*;
+import static org.funnycoin.p2p.RequestParams.*;
 
-    public static int getCirculation() {
-        return blockChain.size();
-    }
+public class Funnycoin {
 
-    public static int getReward() {
-        return 50;
-    }
 
-    public static int getInputReward() {
-        return blockChain.size() < 10000 ? 50 : 40;
-    }
-
-    public static Block getCurrentBlock() {
-        if(FunnycoinCache.blockChain.size() == 0) {
-            return new Block("genesis");
+    private void mine() throws IOException {
+        Block mine = FunnycoinCache.getNextBlock();
+        mine.transactions.add(new Transaction("coinbase", wallet.getBase64Key(wallet.publicKey),50.f,"null"));
+        System.out.println("mining block with a difficulty of: " + FunnycoinCache.getBlockDifficulty(mine.height));
+        if(mine.mine(FunnycoinCache.getBlockDifficulty(mine.height))) {
+            Gson gson = new Gson();
+            String json = gson.toJson(mine);
+            peerServer.broadcast(json, "newBlock");
+            blockChain.add(mine);
+            syncBlockchainFile();
+            interrupted = false;
         }
-        return FunnycoinCache.blockChain.get(FunnycoinCache.blockChain.size() - 1);
     }
 
+    private void loadConfig() {
+        try {
+            final File config = new File("config.json");
+            final StringBuilder builder = new StringBuilder();
+            final BufferedReader reader = new BufferedReader(new FileReader(config));
+            String tmp;
+            while((tmp = reader.readLine()) != null) builder.append(tmp);
+            JsonParser parser = new JsonParser();
+            JsonObject obj = (JsonObject) parser.parse(builder.toString());
+            int port = obj.get("port").getAsInt();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-    public static int getBlockDifficulty(int height) {
-        int difficulty = FunnycoinCache.getDifficulty;
-        if(FunnycoinCache.blockChain.size() > 3) {
-            Block p = FunnycoinCache.blockChain.get(height - 1);
-            Block p2 = FunnycoinCache.blockChain.get(height - 2);
+    Funnycoin(NodeType type) throws Exception {
+        Gson gson = new Gson();
+        if(type == NodeType.MINER) {
+            System.out.println("selected type: miner");
+            // NetworkManager manager = new NetworkManager();
+            System.out.println("connecting to other people");
+            loadBlockChain();
+            /**
+             * Later on in the class, i define a method that asks other nodes to send their blockchain starting after a block height of what i currently have.
+             */
+            if(blockChain.size() == 0) {
+                peerServer.init();
+                peerLoader.init();
+                System.out.println("done loading SERVER and PEER");
+                for(int k = 0; k < peerLoader.peers.size(); k++) {
+                    Peer p = peerLoader.peers.get(k);
+                    BeamMessage message = new BeamMessage();
+                    message.set("event","nodejoin");
+                    message.set("address", getIp());
+                    message.set("port",String.valueOf(peerServer.port));
+                    p.socket.queueMessage(message);
+                }
+                System.out.println("done sending notification");
+                System.out.println("Blockchain empty.");
+                Block genesis = FunnycoinCache.getCurrentBlock();
+                genesis.transactions.add(new Transaction("coinbase",wallet.getBase64Key(wallet.publicKey),50.0f,"null"));
+                if(genesis.mine(getBlockDifficulty(0))) {
+                    blockChain.add(genesis);
+                    syncBlockchainFile();
+                    /**
+                     * We have set the local blockchain since we know our own block is valid at genesis. who else would make a fraudulent block when they don't know the chain exists;
+                     * we are going to send the block to other people now;
+                     */
+                    peerServer.broadcast(gson.toJson(genesis),"newBlock");
+                }
+                while (true) {
+                    System.out.println("continuing chain.. mining...");
+                    mine();
+                }
+            } else {
+                peerServer.init();
+                peerLoader.init();
+                for(Peer p : peerLoader.peers) {
+                    BeamMessage message = new BeamMessage();
+                    message.set("event","nodejoin");
+                    message.set("address", getIp());
+                    message.set("port", String.valueOf(peerServer.port));
+                    p.socket.queueMessage(message);
+                }
 
-            long b = p.timeStamp / 1000;
-            long b2 = p2.timeStamp / 1000;
-            long difference = b - b2;
-            if(difference > 160) {
-                difficulty = 6;
-            } else if(difference > 130) {
-                difficulty = 7;
-            } else if(difference > 110) {
-                difficulty = 9;
-            } else if(difference > 90) {
-                difficulty = 9;
-            } else if(difference > 70) {
-                difficulty = 11;
-            } else if(difference > 50) {
-                difficulty = 8;
-            } else if(difference > 30) {
-                difficulty = 12;
-            } else if(difference > 9) {
-                difficulty = 16;
-            } else if(difference > 5) {
-                difficulty = 16;
+                // getBlocksAfter(getCurrentBlock().height);
+                while(true) {
+                    mine();
+                }
+            }
+        } else if(type == NodeType.WALLET) {
+            FunnycoinCache.loadBlockChain();
+            System.out.print(getBalanceFromChain(wallet.getBase64Key(wallet.publicKey)));
+            peerLoader.init();
+            while(true) {
+                Thread.sleep(1000);
             }
         }
-        getDifficulty = difficulty;
-        return difficulty;
     }
 
-
-    public static PeerServer peerServer = new PeerServer();
-
-    public static Block getNextBlock() {
-        return new Block(getCurrentBlock().getHash());
-    }
-
-    public static PeerLoader peerLoader = new PeerLoader();
-
-
-    public static Wallet wallet;
-
-    static {
-        try {
-            wallet = new Wallet();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+    private float getBalanceFromChain(String publicKey) {
+        float balance = 0.0f;
+        for(Block block : FunnycoinCache.blockChain) {
+            for(Transaction transaction : block.getTransactions()) {
+                if((transaction.getOutputKey().contains(publicKey))) {
+                    balance += transaction.getAmount();
+                }
+            }
         }
+        return balance;
     }
-    public static void syncBlockchainFile() {
-        try {
-            BufferedWriter chainWriter = new BufferedWriter(new FileWriter(new File("blockchain.json")));
-            Gson gson = new Gson();
-            chainWriter.write(gson.toJson(FunnycoinCache.blockChain));
-            chainWriter.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+
+    public static void main(String[] args) throws Exception {
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+        if(args.length == 1) {
+            if(args[0].toLowerCase().contains("miner")) {
+                new Funnycoin(NodeType.MINER);
+            } else if(args[0].toLowerCase().contains("wallet")) {
+                new Funnycoin(NodeType.WALLET);
+            }
         }
     }
 
-    public static void loadBlockChain() throws IOException {
-        File blockChainFile = new File("blockchain.json");
 
-        BufferedReader chainReader = new BufferedReader(new FileReader(blockChainFile));
-        StringBuilder chainBuilder = new StringBuilder();
-        String line;
-        while((line = chainReader.readLine()) != null) {
-            chainBuilder.append(line);
-        }
-        if(chainBuilder.toString().length() > 1) {
-            String json = chainBuilder.toString();
-            JsonParser chainParser = new JsonParser();
-            JsonArray blockChainArray = (JsonArray) chainParser.parse(json);
-            Gson gson = new Gson();
-            Block[] blockChain = gson.fromJson(blockChainArray, Block[].class);
-            List<Block> blocksList = Arrays.asList(blockChain);
-            FunnycoinCache.blockChain.addAll(blocksList);
-        }
+
+
+
+    public enum NodeType {
+        MINER,
+        WALLET
     }
-
-    public static int getDifficulty = 8;
-
-    public static List<List<Block>> gatheredBlocks = new ArrayList<>();
-
-    public static String ip;
-
-    static {
-        try {
-            ip = getIp();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static String getIp() throws IOException {
-        URL url = new URL("http://checkip.amazonaws.com/");
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
-        return reader.readLine();
-    }
-
-    public static JsonParser parser = new JsonParser();
-
 }
