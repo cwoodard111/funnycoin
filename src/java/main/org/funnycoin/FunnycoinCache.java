@@ -39,6 +39,40 @@ public class FunnycoinCache {
     }
 
 
+    public static int getBlockDifficulty(int height) {
+        int difficulty = FunnycoinCache.getDifficulty;
+        if(FunnycoinCache.blockChain.size() > 3) {
+            Block p = FunnycoinCache.blockChain.get(height - 1);
+            Block p2 = FunnycoinCache.blockChain.get(height - 2);
+
+            long b = p.timeStamp / 1000;
+            long b2 = p2.timeStamp / 1000;
+            long difference = b - b2;
+            if(difference > 160) {
+                difficulty = 6;
+            } else if(difference > 130) {
+                difficulty = 7;
+            } else if(difference > 110) {
+                difficulty = 9;
+            } else if(difference > 90) {
+                difficulty = 9;
+            } else if(difference > 70) {
+                difficulty = 11;
+            } else if(difference > 50) {
+                difficulty = 8;
+            } else if(difference > 30) {
+                difficulty = 12;
+            } else if(difference > 9) {
+                difficulty = 16;
+            } else if(difference > 5) {
+                difficulty = 16;
+            }
+        }
+        getDifficulty = difficulty;
+        return difficulty;
+    }
+
+
     public static PeerServer peerServer = new PeerServer();
 
     public static Block getNextBlock() {
@@ -90,9 +124,7 @@ public class FunnycoinCache {
         }
     }
 
-    public static int getDifficulty() {
-        return 6;
-    }
+    public static int getDifficulty = 8;
 
     public static List<List<Block>> gatheredBlocks = new ArrayList<>();
 
