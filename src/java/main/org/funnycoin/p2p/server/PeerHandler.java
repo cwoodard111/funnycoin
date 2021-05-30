@@ -6,6 +6,7 @@ import com.codebrig.beam.messages.BasicMessage;
 import com.codebrig.beam.messages.BeamMessage;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.funnycoin.Funnycoin;
 import org.funnycoin.FunnycoinCache;
 import org.funnycoin.blocks.Block;
@@ -15,7 +16,9 @@ import org.funnycoin.transactions.Transaction;
 import org.funnycoin.wallet.SignageUtils;
 
 import java.io.IOException;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 
@@ -24,12 +27,71 @@ public class PeerHandler extends BeamHandler {
         super(0);
     }
 
+    private float getBalanceFromChain(String publicKey, String token) {
+        token = token.toUpperCase();
+        float balance = 0.0f;
+        for(Block block : FunnycoinCache.blockChain) {
+            for(Transaction transaction : block.getTransactions()) {
+                if((transaction.getOutputKey().contains(publicKey)) && transaction.getToken().equals(token)) {
+                    balance += transaction.getAmount();
+                }
+            }
+        }
+        return balance;
+    }
+    public String applySha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+            byte[] hash = digest.digest(input.getBytes("UTF-8"));
+
+            StringBuffer hexString = new StringBuffer();
+            for (int i = 0; i < hash.length; i++) {
+                String hex = Integer.toHexString(0xff & hash[i]);
+                if(hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        }
+        catch(Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @Override
     public BeamMessage messageReceived(Communicator communicator, BeamMessage beamMessage) {
         System.out.println("message recieved");
         String msg = beamMessage.get("message");
         Gson gson = new Gson();
+        if(beamMessage.get("event").toLowerCase().contains("newTransaction")) {
+            JsonParser parser = new JsonParser();
+            JsonObject obj = (JsonObject) parser.parse(beamMessage.get("message"));
+            if(getBalanceFromChain(obj.get("ownerWallet").getAsString(),obj.get("token").getAsString()) < obj.get("amount").getAsFloat()) {
+                // Think it works.
+                RequestParams.interrupted = true;
+                String ownerWallet = obj.get("ownerWallet").getAsString();
+                String targetWallet = obj.get("targetWallet").getAsString();
+                float amount = obj.get("amount").getAsFloat();
+                String token = obj.get("token").getAsString();
+                int version = obj.get("version").getAsInt();
+                String signature = obj.get("signature").getAsString();
+
+                String txHash = applySha256(ownerWallet + targetWallet + amount + token + version);
+
+                Transaction b = new Transaction(obj.get("ownerWallet").getAsString(),obj.get("targetWallet").getAsString(),obj.get("amount").getAsFloat(),signature,token);
+                try {
+                    if(b.verify(txHash,signature, SignageUtils.getPublicKey(ownerWallet))) {
+                         /*
+                         Transaction was signed and is valid and is not double spending.
+                         */
+                        FunnycoinCache.getNextBlock().transactions.add(b);
+                        RequestParams.interrupted = true;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
         if(beamMessage.get("event").toLowerCase().contains("newblock")) {
             List<Block> tempChain = new ArrayList<>(FunnycoinCache.blockChain);
             tempChain.add(gson.fromJson(msg,Block.class));
@@ -93,7 +155,6 @@ public class PeerHandler extends BeamHandler {
         boolean valid = false;
         for(int i = 0; i < blockChain.size(); i++) {
             Block currentBlock = blockChain.get(i);
-            String difficultyTarget = new String(new char[FunnycoinCache.getBlockDifficulty(i)]).replace('\0','0');
             if(blockChain.size() > 1 && i != 0) {
                 Block previousBlock = blockChain.get(i - 1);
                 /**
@@ -107,7 +168,11 @@ public class PeerHandler extends BeamHandler {
                     System.out.println("The hash of the previous block is not equal to the calculated value.");
                     return false;
                 }
-                if(!currentBlock.hash.substring(0,FunnycoinCache.getDifficulty).equals(difficultyTarget)) {
+                int difficulty = 6;
+                String difficultyTarget = new String(new char[difficulty]).replace('\0','0');
+                System.out.println(difficultyTarget + " " + currentBlock.hash);
+
+                if(!currentBlock.hash.substring(0,difficulty).equals(difficultyTarget)) {
                     System.out.println("The block does not have a Proof-Of-Work attached to it.");
                     return false;
                 }
