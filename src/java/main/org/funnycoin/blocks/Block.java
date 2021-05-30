@@ -17,6 +17,7 @@ public class Block {
     public int height;
     public int nonce;
     public String merkleRoot;
+    public int difficulty;
 
     public Block(String previousHash) {
         if(FunnycoinCache.blockChain.size() == 0) {
@@ -26,22 +27,23 @@ public class Block {
         }
         this.previousHash = previousHash;
         this.timeStamp = new Date().getTime();
+        this.difficulty = FunnycoinCache.getDifficulty;
         hash = getHash();
     }
 
-    public boolean mine(int difficulty) {
+    public boolean mine(int diff) {
+        difficulty = diff;
         RequestParams.interrupted = false;
-        System.out.println("mining block");
         merkleRoot = getMerkleRoot(transactions);
-        String targetHash = new String(new char[difficulty]).replace('\0', '0');
-        while (!hash.substring(0, difficulty).equals(targetHash)) {
+        String targetHash = new String(new char[diff]).replace('\0', '0');
+        System.out.println("mining block " + diff);
+        while (!hash.substring(0, diff).equals(targetHash)) {
             if (RequestParams.interrupted) {
                 return false;
             }
             nonce++;
             hash = getHash();
         }
-
         System.out.println("block successfully mined with a nonce of: " + nonce);
         return true;
     }
@@ -57,7 +59,7 @@ public class Block {
 
         while(count > 1) {
             treeLayer = new ArrayList<String>();
-            for(int i=1; i < previousTreeLayer.size(); i+=2) {
+            for(int i = 1; i < previousTreeLayer.size(); i+=2) {
                 treeLayer.add(applySha256(previousTreeLayer.get(i-1) + previousTreeLayer.get(i)));
             }
             count = treeLayer.size();
@@ -75,8 +77,7 @@ public class Block {
         return previousHash;
     }
 
-    public String applySha256(String input){
-
+    public String applySha256(String input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
 
