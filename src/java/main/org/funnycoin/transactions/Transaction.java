@@ -15,7 +15,9 @@ public class Transaction {
     float amount;
     public String transactionId;
     public String signature;
-    public Transaction(String ownerKey, String outputKey, float amount, String signature) {
+    public String token;
+    public Transaction(String ownerKey, String outputKey, float amount, String signature, String token) {
+        this.token = token;
         this.signature = signature;
         this.outputKey = outputKey;
         this.ownerKey = ownerKey;
@@ -28,6 +30,10 @@ public class Transaction {
 
     public String getOutputKey() {
         return outputKey;
+    }
+
+    public String getToken() {
+        return token;
     }
 
     public float getAmount() {
@@ -56,7 +62,7 @@ public class Transaction {
     }
 
     public String getHash() {
-        return applySha256(ownerKey + outputKey + amount + signature);
+        return applySha256(ownerKey + outputKey + amount + signature + token);
     }
 
     public String applySha256(String input){
