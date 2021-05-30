@@ -6,12 +6,15 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.funnycoin.blocks.Block;
+import org.funnycoin.miner.VerificationUtils;
 import org.funnycoin.p2p.Peer;
 import org.funnycoin.p2p.server.PeerServer;
 import org.funnycoin.transactions.Transaction;
+import org.funnycoin.wallet.SignageUtils;
 
 import java.io.*;
 import java.security.Security;
+import java.util.Scanner;
 
 import static org.funnycoin.FunnycoinCache.*;
 import static org.funnycoin.p2p.RequestParams.*;
@@ -21,9 +24,11 @@ public class Funnycoin {
 
     private void mine() throws IOException {
         Block mine = FunnycoinCache.getNextBlock();
-        mine.transactions.add(new Transaction("coinbase", wallet.getBase64Key(wallet.publicKey),50.f,"null"));
-        System.out.println("mining block with a difficulty of: " + FunnycoinCache.getBlockDifficulty(mine.height));
-        if(mine.mine(FunnycoinCache.getBlockDifficulty(mine.height))) {
+        mine.difficulty = getBlockDifficulty();
+        mine.transactions.add(new Transaction("coinbase", wallet.getBase64Key(wallet.publicKey),50.f,"null","FUNNY"));
+        int diff = getDifficulty;
+        System.out.println("mining block with a difficulty of: " + diff);
+        if(mine.mine(diff)) {
             Gson gson = new Gson();
             String json = gson.toJson(mine);
             peerServer.broadcast(json, "newBlock");
@@ -73,8 +78,8 @@ public class Funnycoin {
                 System.out.println("done sending notification");
                 System.out.println("Blockchain empty.");
                 Block genesis = FunnycoinCache.getCurrentBlock();
-                genesis.transactions.add(new Transaction("coinbase",wallet.getBase64Key(wallet.publicKey),50.0f,"null"));
-                if(genesis.mine(getBlockDifficulty(0))) {
+                genesis.transactions.add(new Transaction("coinbase",wallet.getBase64Key(wallet.publicKey),50.0f,"null","FUNNYCOIN"));
+                if(genesis.mine(getBlockDifficulty())) {
                     blockChain.add(genesis);
                     syncBlockchainFile();
                     /**
@@ -104,20 +109,38 @@ public class Funnycoin {
                 }
             }
         } else if(type == NodeType.WALLET) {
+
             FunnycoinCache.loadBlockChain();
-            System.out.print(getBalanceFromChain(wallet.getBase64Key(wallet.publicKey)));
             peerLoader.init();
             while(true) {
-                Thread.sleep(1000);
+                Scanner p = new Scanner(System.in);
+                String l = p.nextLine();
+                if(l != null) {
+                    String[] args = l.split(" ");
+                    if(args[0].equals("send") && (Float.parseFloat(args[2]) < getBalanceFromChain(wallet.getBase64Key(wallet.publicKey),args[3]))) {
+                        JsonObject object = new JsonObject();
+                        object.addProperty("ownerWallet",wallet.getBase64Key(wallet.publicKey));
+                        object.addProperty("targetWallet",args[1]);
+                        object.addProperty("amount",Float.parseFloat(args[2]));
+                        object.addProperty("token",args[3]);
+                        object.addProperty("version",1);
+
+                        String txHash = SignageUtils.applySha256(wallet.getBase64Key(wallet.publicKey) + args[1] + args[2] + args[3] + 1);
+                        String signature = SignageUtils.sign(txHash,wallet.privateKey);
+                        object.addProperty("signature",signature);
+                        peerServer.broadcast(object.toString(),"newTransaction");
+                    }
+                }
             }
         }
     }
 
-    private float getBalanceFromChain(String publicKey) {
+    private float getBalanceFromChain(String publicKey, String token) {
+        token = token.toUpperCase();
         float balance = 0.0f;
         for(Block block : FunnycoinCache.blockChain) {
             for(Transaction transaction : block.getTransactions()) {
-                if((transaction.getOutputKey().contains(publicKey))) {
+                if((transaction.getOutputKey().contains(publicKey)) && transaction.getToken().equals(token)) {
                     balance += transaction.getAmount();
                 }
             }
