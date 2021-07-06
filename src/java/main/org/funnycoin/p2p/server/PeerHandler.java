@@ -119,6 +119,7 @@ public class PeerHandler extends BeamHandler {
                 for(Peer peer : FunnycoinCache.peerLoader.peers) {
                     if (!(peer.address == p.address && peer.port == p.port)) {
                     }
+                    // KMS CHALLENGE
                     try {
                         p.connectToPeer();
                         FunnycoinCache.peerLoader.peers.add(p);
